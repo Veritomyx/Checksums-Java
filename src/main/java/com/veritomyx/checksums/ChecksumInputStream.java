@@ -65,10 +65,12 @@ public class ChecksumInputStream extends InputStream {
     /**
      * Convenience method to return a ChecksumInputStream that wraps a
      * BufferedInputStream around one returned from
-     * {@link java.nio.file.Files#newInputStream()}.
+     * {@link java.nio.file.Files#newInputStream}.
      *
-     * @throws NoSuchAlgorithmException
-     * @throws IOException
+     * @param path Path used for input file
+     * @throws NoSuchAlgorithmException if SHA-1 is not found
+     * @throws IOException if an I/O error occurs opening the file
+     * @return A new instance of a ChecksumInputStream
      */
     public static InputStream create(Path path) throws NoSuchAlgorithmException, IOException {
         return new ChecksumInputStream(new BufferedInputStream(Files.newInputStream(path)));

@@ -58,8 +58,10 @@ public class ChecksumOutputStream extends FilterOutputStream {
      * BufferedOutputStream around one returned from
      * {@link java.nio.file.Files}.
      *
-     * @throws NoSuchAlgorithmException
-     * @throws IOException
+     * @param path Path used for output file
+     * @throws NoSuchAlgorithmException if SHA-1 is not found
+     * @throws IOException if an I/O error occurs opening the file
+     * @return A new instance of a ChecksumInputStream
      */
     public static OutputStream create(Path path) throws NoSuchAlgorithmException, IOException {
         return new ChecksumOutputStream(new BufferedOutputStream(Files.newOutputStream(path)));
