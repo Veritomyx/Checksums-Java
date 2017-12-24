@@ -2,6 +2,7 @@ group 'com.veritomyx'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java-library'
+apply plugin: 'signing'
 
 sourceCompatibility = 1.8
 
@@ -21,4 +22,22 @@ jar {
         attributes('Implementation-Title': project.name,
                 'Implementation-Version': project.version)
     }
+}
+
+task javadocJar(type: Jar) {
+    classifier = 'javadoc'
+    from javadoc
+}
+
+task sourcesJar(type: Jar) {
+    classifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+artifacts {
+    archives sourcesJar, javadocJar
+}
+
+signing {
+    sign configurations.archives
 }
