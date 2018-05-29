@@ -32,6 +32,8 @@
 package com.veritomyx.checksums;
 
 import org.apache.commons.codec.binary.Hex;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedOutputStream;
 import java.io.FilterOutputStream;
@@ -41,16 +43,29 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
+import java.util.Optional;
 
 public class ChecksumOutputStream extends FilterOutputStream {
 
+    private enum State { OUT, BUFFER, CHECKSUM, FINISHED, CLOSED };
+
+    private final static Logger LOGGER = LoggerFactory.getLogger(ChecksumOutputStream.class);
+    private final static int CHECKSUM_SIZE = 51;
+
     private final MessageDigest digest;
-    private boolean isClosed;
+    private final byte[] buffer;
+
+    private State state;
+    private int index;
+    private Optional<String> found = Optional.empty();
 
     public ChecksumOutputStream(OutputStream out) throws NoSuchAlgorithmException {
         super(out);
         this.digest = MessageDigest.getInstance("SHA-1");
-        this.isClosed = false;
+        this.state = State.OUT;
+        this.buffer = new byte[CHECKSUM_SIZE];
+        this.index = 0;
     }
 
     /**
@@ -59,9 +74,9 @@ public class ChecksumOutputStream extends FilterOutputStream {
      * {@link java.nio.file.Files}.
      *
      * @param path Path used for output file
-     * @throws NoSuchAlgorithmException if SHA-1 is not found
-     * @throws IOException if an I/O error occurs opening the file
      * @return A new instance of a ChecksumInputStream
+     * @throws NoSuchAlgorithmException if SHA-1 is not found
+     * @throws IOException              if an I/O error occurs opening the file
      */
     public static OutputStream create(Path path) throws NoSuchAlgorithmException, IOException {
         return new ChecksumOutputStream(new BufferedOutputStream(Files.newOutputStream(path)));
@@ -69,19 +84,76 @@ public class ChecksumOutputStream extends FilterOutputStream {
 
     @Override
     public void write(int b) throws IOException {
-        digest.update((byte) b);
-        out.write(b);
+        // ignore everything after encountering first checksum line
+        if (state == State.FINISHED) {
+            return;
+        }
+
+        if (state == State.BUFFER || state == State.CHECKSUM) {
+            writeBuffer(b);
+        } else if (state == State.OUT && (char) b == '#') {
+            state = State.BUFFER;
+            writeBuffer(b);
+        } else {
+            digest.update((byte) b);
+            out.write(b);
+        }
     }
 
     @Override
     public void close() throws IOException {
-        if (isClosed) {
+        if (state == State.CLOSED) {
+            return;
+        } else if (state == State.BUFFER) {
+            digest.update(buffer, 0, index);
+            out.write(buffer, 0, index);
+        } else if (state == State.CHECKSUM) {
+            LOGGER.error("Partial checksum line detected: {}", new String(Arrays.copyOf(buffer, index)));
+            throw new InvalidChecksumException();
+        }
+
+        final String checksum = "# checksum:" + Hex.encodeHexString(digest.digest());
+
+        if (found.isPresent()) {
+            if (!checksum.equals(found.get())) {
+                LOGGER.error("Calculated: {}, Found: {}", checksum.substring(11), found.get().substring(11));
+                throw new InvalidChecksumException();
+            }
+        }
+
+        out.write(checksum.getBytes());
+        out.write('\n');
+        out.close();
+        state = State.CLOSED;
+    }
+
+    private void writeBuffer(int b) throws IOException {
+        buffer[index] = (byte) b;
+        index++;
+        // check for presence of '# checksum:'
+        if (index == 11) {
+            String contents = new String(Arrays.copyOf(buffer, index));
+
+            // if not checksum, reset to index
+            if (!contents.equals("# checksum:")) {
+                digest.update(buffer, 0, index);
+                out.write(buffer, 0, index);
+                state = State.OUT;
+                index = 0;
+            } else {
+                state = State.CHECKSUM;
+            }
+        }
+
+        // haven't read all of checksum
+        if (index < CHECKSUM_SIZE) {
             return;
         }
 
-        String checksum = "# checksum:" + Hex.encodeHexString(digest.digest()) + "\n";
-        out.write(checksum.getBytes());
-        out.close();
-        isClosed = true;
+        final String line = new String(buffer);
+        state = State.FINISHED;
+        found = Optional.of(line);
+
     }
 }
+
