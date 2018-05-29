@@ -151,6 +151,21 @@ public class ChecksumInputStreamTest {
         }
     }
 
+    @Test
+    public void testPartial() throws URISyntaxException, IOException, NoSuchAlgorithmException {
+        exception.expect(MissingChecksumException.class);
+
+        Path path = Paths.get(getResourceUri("partial.txt"));
+        List<String> lines = new ArrayList<>();
+        try (InputStream stream = new ChecksumInputStream(new BufferedInputStream(Files.newInputStream(path)));
+             BufferedReader reader = new BufferedReader(new InputStreamReader(stream))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                lines.add(line);
+            }
+        }
+    }
+
     private static URI getResourceUri(String filename) throws URISyntaxException {
         URL resourceUrl = ChecksumInputStreamTest.class.getResource(BASE_TEST_PATH + filename);
         assertThat(resourceUrl, not(nullValue()));
