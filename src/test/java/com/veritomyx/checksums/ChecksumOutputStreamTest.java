@@ -33,18 +33,29 @@ package com.veritomyx.checksums;
 
 import org.junit.Rule;
 import org.junit.Test;
+import org.junit.rules.ExpectedException;
 import org.junit.rules.TemporaryFolder;
 
 import java.io.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.*;
 import static org.junit.Assert.assertThat;
 
 public class ChecksumOutputStreamTest {
+
+    private final static String BASE_TEST_PATH = "/com/veritomyx/checksums/ChecksumTestFiles/";
+
+    @Rule
+    public ExpectedException exception = ExpectedException.none();
 
     @Rule
     public TemporaryFolder folder = new TemporaryFolder();
@@ -95,5 +106,83 @@ public class ChecksumOutputStreamTest {
         }
 
         assertThat(lines, equalTo(text));
+    }
+
+    @Test
+    public void testChecksumAlreadyPresent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("valid.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(Files.newOutputStream(file.toPath()))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        }
+
+        final long numChecksumLines = Files.readAllLines(file.toPath())
+                .stream()
+                .filter(x -> x.contains("# checksum:"))
+                .count();
+        assertThat(numChecksumLines, equalTo(1L));
+    }
+
+    @Test
+    public void testInvalidChecksumAlreadyPresent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        exception.expect(InvalidChecksumException.class);
+
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("invalid.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(Files.newOutputStream(file.toPath()))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        }
+    }
+
+    @Test
+    public void testPartialChecksumAlreadyPresent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        exception.expect(InvalidChecksumException.class);
+
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("partial.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(Files.newOutputStream(file.toPath()))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        }
+    }
+
+    @Test
+    public void testMissing2() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("missing2.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(Files.newOutputStream(file.toPath()))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        }
+
+        final long numChecksumLines = Files.readAllLines(file.toPath())
+                .stream()
+                .filter(x -> x.contains("# checksum:"))
+                .count();
+        assertThat(numChecksumLines, equalTo(1L));
+    }
+
+    private static URI getResourceUri(String filename) throws URISyntaxException {
+        URL resourceUrl = ChecksumInputStreamTest.class.getResource(BASE_TEST_PATH + filename);
+        assertThat(resourceUrl, not(nullValue()));
+        return resourceUrl.toURI();
     }
 }
