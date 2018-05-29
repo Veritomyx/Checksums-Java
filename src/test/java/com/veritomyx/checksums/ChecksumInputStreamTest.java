@@ -51,7 +51,7 @@ import static org.junit.Assert.assertThat;
 
 public class ChecksumInputStreamTest {
 
-    private final static String BASE_TEST_PATH = "/com/veritomyx/checksums/ChecksumInputStreamTestFiles/";
+    private final static String BASE_TEST_PATH = "/com/veritomyx/checksums/ChecksumTestFiles/";
 
     @Rule
     public ExpectedException exception = ExpectedException.none();
