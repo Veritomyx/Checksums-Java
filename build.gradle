@@ -39,48 +39,50 @@ artifacts {
     archives sourcesJar, javadocJar
 }
 
-signing {
-    sign configurations.archives
-}
+if (project.hasProperty("ossrhUsername")) {
+    signing {
+        sign configurations.archives
+    }
 
-uploadArchives {
-    repositories {
-        mavenDeployer {
-            beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+    uploadArchives {
+        repositories {
+            mavenDeployer {
+                beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
 
-            repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
-                authentication(userName: ossrhUsername, password: ossrhPassword)
-            }
-
-            snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
-                authentication(userName: ossrhUsername, password: ossrhPassword)
-            }
-
-            pom.project {
-                name 'Checksums'
-                packaging 'jar'
-                // optionally artifactId can be defined here
-                description 'Classes to support adding/verifying Veritomyx-style checksums to files'
-                url 'http://veritomyx.com'
-
-                scm {
-                    connection 'scm:git:https://github.com/Veritomyx/Checksums-Java.git'
-                    developerConnection 'scm:git:git@github.com:Veritomyx/Checksums-Java.git'
-                    url 'https://github.com/Veritomyx/Checksums-Java'
+                repository(url: "https://oss.sonatype.org/service/local/staging/deploy/maven2/") {
+                    authentication(userName: ossrhUsername, password: ossrhPassword)
                 }
 
-                licenses {
-                    license {
-                        name 'BSD 3-Clause'
-                        url 'https://opensource.org/licenses/BSD-3-Clause'
+                snapshotRepository(url: "https://oss.sonatype.org/content/repositories/snapshots/") {
+                    authentication(userName: ossrhUsername, password: ossrhPassword)
+                }
+
+                pom.project {
+                    name 'Checksums'
+                    packaging 'jar'
+                    // optionally artifactId can be defined here
+                    description 'Classes to support adding/verifying Veritomyx-style checksums to files'
+                    url 'http://veritomyx.com'
+
+                    scm {
+                        connection 'scm:git:https://github.com/Veritomyx/Checksums-Java.git'
+                        developerConnection 'scm:git:git@github.com:Veritomyx/Checksums-Java.git'
+                        url 'https://github.com/Veritomyx/Checksums-Java'
                     }
-                }
 
-                developers {
-                    developer {
-                        id 'TDI-tenderholt'
-                        name 'Adam Tenderholt'
-                        email 'adam.tenderholt@veritomyx.com'
+                    licenses {
+                        license {
+                            name 'BSD 3-Clause'
+                            url 'https://opensource.org/licenses/BSD-3-Clause'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id 'TDI-tenderholt'
+                            name 'Adam Tenderholt'
+                            email 'adam.tenderholt@veritomyx.com'
+                        }
                     }
                 }
             }
