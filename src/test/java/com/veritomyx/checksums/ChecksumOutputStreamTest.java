@@ -180,6 +180,26 @@ public class ChecksumOutputStreamTest {
         assertThat(numChecksumLines, equalTo(1L));
     }
 
+    @Test
+    public void testRegressionBinary() throws IOException, URISyntaxException, NoSuchAlgorithmException {
+        final long length = 54782L;
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("scan00565.bin"));
+
+        assertThat(path.toFile().length(), equalTo(length));
+
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(Files.newOutputStream(file.toPath()))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        }
+
+        assertThat(file.length(), equalTo(length));
+    }
+
     private static URI getResourceUri(String filename) throws URISyntaxException {
         URL resourceUrl = ChecksumInputStreamTest.class.getResource(BASE_TEST_PATH + filename);
         assertThat(resourceUrl, not(nullValue()));

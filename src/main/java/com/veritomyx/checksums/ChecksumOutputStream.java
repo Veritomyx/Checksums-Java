@@ -52,6 +52,7 @@ public class ChecksumOutputStream extends FilterOutputStream {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(ChecksumOutputStream.class);
     private final static int CHECKSUM_SIZE = 51;
+    private final static byte[] CHECKSUM_BYTES = { '#', ' ', 'c', 'h', 'e', 'c', 'k', 's', 'u', 'm', ':'};
 
     private final MessageDigest digest;
     private final byte[] buffer;
@@ -127,21 +128,31 @@ public class ChecksumOutputStream extends FilterOutputStream {
         state = State.CLOSED;
     }
 
-    private void writeBuffer(int b) throws IOException {
-        buffer[index] = (byte) b;
-        index++;
-        // check for presence of '# checksum:'
-        if (index == 11) {
-            String contents = new String(Arrays.copyOf(buffer, index));
+    private void writeBuffer(int value) throws IOException {
+        // if "# checksum:" is in buffer, set state to CHECKSUM
+        if (index == CHECKSUM_BYTES.length) {
+            state = State.CHECKSUM;
+        }
 
-            // if not checksum, reset to index
-            if (!contents.equals("# checksum:")) {
-                digest.update(buffer, 0, index);
-                out.write(buffer, 0, index);
-                state = State.OUT;
-                index = 0;
+        final byte b = (byte) value;
+
+        if (state == State.CHECKSUM || b == CHECKSUM_BYTES[index]) {
+            buffer[index] = b;
+            index++;
+        } else {
+            digest.update(buffer, 0, index);
+            out.write(buffer, 0, index);
+
+            // if '#' is encountered, need to store it in buffer; else write/digest
+            if ((char) value == '#') {
+                buffer[0] = b;
+                index = 1;
+                state = State.BUFFER;
             } else {
-                state = State.CHECKSUM;
+                digest.update(b);
+                out.write(value);
+                index = 0;
+                state = State.OUT;
             }
         }
 
