@@ -129,7 +129,25 @@ public class ChecksumOutputStreamTest {
     }
 
     @Test
-    public void testInvalidChecksumAlreadyPresent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+    public void testInvalidChecksumAlreadyPresentWithBuffer() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        exception.expect(InvalidChecksumException.class);
+
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("invalid.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(new BufferedOutputStream(Files.newOutputStream(file.toPath())))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        } finally {
+            assertThat(file.length(), equalTo(43L));
+        }
+    }
+
+    @Test
+    public void testInvalidChecksumAlreadyPresentWithoutBuffer() throws IOException, NoSuchAlgorithmException, URISyntaxException {
         exception.expect(InvalidChecksumException.class);
 
         File file = folder.newFile();
@@ -141,11 +159,31 @@ public class ChecksumOutputStreamTest {
             while ((val = stream.read()) >= 0) {
                 output.write(val);
             }
+        } finally {
+            assertThat(file.length(), equalTo(43L));
         }
     }
 
     @Test
-    public void testPartialChecksumAlreadyPresent() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+    public void testPartialChecksumAlreadyPresentWithBuffer() throws IOException, NoSuchAlgorithmException, URISyntaxException {
+        exception.expect(InvalidChecksumException.class);
+
+        File file = folder.newFile();
+        Path path = Paths.get(getResourceUri("partial.txt"));
+        try (InputStream stream = Files.newInputStream(path);
+             OutputStream output = new ChecksumOutputStream(new BufferedOutputStream(Files.newOutputStream(file.toPath())))) {
+
+            int val;
+            while ((val = stream.read()) >= 0) {
+                output.write(val);
+            }
+        } finally {
+            assertThat(file.length(), equalTo(43L));
+        }
+    }
+
+    @Test
+    public void testPartialChecksumAlreadyPresentWithoutBuffer() throws IOException, NoSuchAlgorithmException, URISyntaxException {
         exception.expect(InvalidChecksumException.class);
 
         File file = folder.newFile();
@@ -157,6 +195,8 @@ public class ChecksumOutputStreamTest {
             while ((val = stream.read()) >= 0) {
                 output.write(val);
             }
+        } finally {
+            assertThat(file.length(), equalTo(43L));
         }
     }
 
