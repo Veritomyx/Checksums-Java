@@ -110,6 +110,7 @@ public class ChecksumOutputStream extends FilterOutputStream {
             out.write(buffer, 0, index);
         } else if (state == State.CHECKSUM) {
             LOGGER.error("Partial checksum line detected: {}", new String(Arrays.copyOf(buffer, index)));
+            flushAndClose();
             throw new InvalidChecksumException();
         }
 
@@ -118,14 +119,14 @@ public class ChecksumOutputStream extends FilterOutputStream {
         if (found.isPresent()) {
             if (!checksum.equals(found.get())) {
                 LOGGER.error("Calculated: {}, Found: {}", checksum.substring(11), found.get().substring(11));
+                flushAndClose();
                 throw new InvalidChecksumException();
             }
         }
 
         out.write(checksum.getBytes());
         out.write('\n');
-        out.close();
-        state = State.CLOSED;
+        flushAndClose();
     }
 
     private void writeBuffer(int value) throws IOException {
@@ -165,6 +166,12 @@ public class ChecksumOutputStream extends FilterOutputStream {
         state = State.FINISHED;
         found = Optional.of(line);
 
+    }
+
+    private void flushAndClose() throws IOException {
+        out.flush();
+        out.close();
+        state = State.CLOSED;
     }
 }
 
