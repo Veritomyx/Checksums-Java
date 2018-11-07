@@ -33,18 +33,24 @@ package com.veritomyx.checksums.app.cat;
 
 import com.veritomyx.checksums.ChecksumInputStream;
 import com.veritomyx.checksums.ChecksumOutputStream;
+import com.veritomyx.checksums.InvalidChecksumException;
 import com.veritomyx.checksums.MissingChecksumException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.security.NoSuchAlgorithmException;
 
 public class CatApp {
 
+    private final static Logger LOGGER = LoggerFactory.getLogger("cat");
+
     public static void main(String[] args) throws NoSuchAlgorithmException, IOException {
 
         final byte[] buffer = new byte[4096];
 
-        try (BufferedOutputStream outputStream = new BufferedOutputStream((new ChecksumOutputStream(System.out)))) {
+        final ByteArrayOutputStream bytes = new ByteArrayOutputStream();
+        try (OutputStream outputStream = new ChecksumOutputStream(bytes)) {
 
             for (String arg : args) {
                 try (BufferedInputStream inputStream = new BufferedInputStream(new ChecksumInputStream(filenameToInputStream(arg)))) {
@@ -54,14 +60,15 @@ public class CatApp {
                         len = inputStream.read(buffer);
                     }
                 } catch (MissingChecksumException e) {
-                    // swallow
+                    LOGGER.warn("Missing checksum: '{}'", arg);
+                } catch (InvalidChecksumException e) {
+                    LOGGER.error("Invalid checksum: '{}'", arg);
+                    System.exit(1);
                 }
             }
         }
-    }
 
-    private static void readAndWriteFile(BufferedWriter writer, String arg) {
-
+        System.out.write(bytes.toByteArray());
     }
 
     private static InputStream filenameToInputStream(String filename) throws FileNotFoundException {
